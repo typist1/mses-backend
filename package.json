@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "start": "nodemon src/server.js",
     "dev": "node src/server.js",
     "lint": "eslint .",
     "format": "npx prettier --write .",
@@ -14,15 +15,25 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.99.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.2.1",
     "firebase": "^12.10.0",
     "firebase-admin": "^13.6.0",
+    "fs": "^0.0.1-security",
     "ini": "^5.0.0",
+    "mammoth": "^1.12.0",
+    "multer": "^2.1.1",
     "mysql2": "^3.12.0",
-    "pg": "^8.13.0"
+    "nodemon": "^3.1.14",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.6.205",
+    "pg": "^8.13.0",
+    "playwright": "^1.59.1",
+    "unpdf": "^1.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

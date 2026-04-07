@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 
 import authRoutes from './routes/authRoutes.js';
+import pdfRoutes from './routes/pdfRoutes.js';
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ const corsOptions = {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       process.env.FRONTEND_URL_DEV,
+      'http://localhost:5050',
     ];
 
     if (allowedOrigins.includes(origin) || !origin) {
@@ -30,16 +32,18 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-app.use(cookieParser());
 app.use(express.json());
+
+app.use(cookieParser());
 
 app.use((req, res, next) => {
   req.url = req.url.replace(/\/+/g, '/');
   next();
 });
 
-app.use('/auth', authRoutes);
 
+app.use('/file', pdfRoutes);
+app.use('/auth', express.json(), authRoutes);
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
