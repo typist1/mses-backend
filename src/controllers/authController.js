@@ -126,6 +126,7 @@ const authController = {
   async handleToken(req, res) {
     try {
       const { idToken } = req.body;
+      console.log("Body:", req.body);
 
       if (!idToken) {
         return res.status(400).json({ error: 'No ID token provided' });
@@ -133,15 +134,22 @@ const authController = {
 
       const decodedToken = await admin.auth().verifyIdToken(idToken);
 
+      const fullName = decodedToken.name || '';
+
+      const baseUsername =
+        fullName.replace(/\s+/g, '_').toLowerCase() ||
+        decodedToken.email?.split('@')[0] ||
+        'user';
+
+      const username = `${baseUsername}_${decodedToken.uid.substring(0, 6)}`;
+
       const user = await userRepository.upsertUser({
         uid: decodedToken.uid,
-        username: decodedToken.name?.replace(/\s+/g, '_').toLowerCase() ||
-          decodedToken.email?.split('@')[0] ||
-          `user_${decodedToken.uid.substring(0, 8)}`,
+        username,
         email: decodedToken.email,
-        firstname: decodedToken.name?.split(' ')[0] || null,
-        lastname: decodedToken.name?.split(' ').slice(1).join(' ') || null,
-      })
+        firstname: fullName ? fullName.split(' ')[0] : null,
+        lastname: fullName ? fullName.split(' ').slice(1).join(' ') : null,
+      });
 
       res.cookie('session', idToken, {
         httpOnly: true,
