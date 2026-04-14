@@ -167,7 +167,7 @@ const authController = {
           .status(400)
           .json({ error: 'Username already exists, please choose another' });
       }
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', detail: error.message, code: error.code });
     }
   },
 };

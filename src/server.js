@@ -5,6 +5,7 @@ import express from 'express';
 
 import authRoutes from './routes/authRoutes.js';
 import pdfRoutes from './routes/pdfRoutes.js';
+import resumeRoutes from './routes/resumeRoutes.js';
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ app.use((req, res, next) => {
 
 app.use('/file', pdfRoutes);
 app.use('/auth', express.json(), authRoutes);
+app.use('/resumes', resumeRoutes);
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
