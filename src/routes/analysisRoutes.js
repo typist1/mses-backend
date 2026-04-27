@@ -135,13 +135,33 @@ router.post('/', authMiddleware, async (req, res) => {
   const cleanedJd = jdResult.cleaned_jd;
   if (cleanedJd.length < 300) flags.sparse_jd = true;
 
-  // Phase 1: parse resume
+  // Phase 1: parse resume (use cached parse on the resume row if available)
   let parsedResume;
-  try {
-    parsedResume = await parseResume(truncated.resumeText);
-  } catch (e) {
-    if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Resume parsing failed. Please try again.' });
-    return res.status(500).json({ error: 'Failed to parse resume' });
+  if (resumeId) {
+    const { data: resumeRow } = await supabase
+      .from('resumes')
+      .select('parsed_resume')
+      .eq('id', resumeId)
+      .single();
+
+    if (resumeRow?.parsed_resume) {
+      parsedResume = resumeRow.parsed_resume;
+    } else {
+      try {
+        parsedResume = await parseResume(truncated.resumeText);
+      } catch (e) {
+        if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Resume parsing failed. Please try again.' });
+        return res.status(500).json({ error: 'Failed to parse resume' });
+      }
+      await supabase.from('resumes').update({ parsed_resume: parsedResume }).eq('id', resumeId);
+    }
+  } else {
+    try {
+      parsedResume = await parseResume(truncated.resumeText);
+    } catch (e) {
+      if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Resume parsing failed. Please try again.' });
+      return res.status(500).json({ error: 'Failed to parse resume' });
+    }
   }
 
   // Phase 2: gap analysis
@@ -196,7 +216,6 @@ router.post('/', authMiddleware, async (req, res) => {
       job_title: jdResult.job_title,
       company: jdResult.company,
       overall_fit_score: overallFitScore,
-      parsed_resume: parsedResume,
       gap_analysis: gapResult,
       optimized_resume: optimizedResume,
       change_log: changeLog,

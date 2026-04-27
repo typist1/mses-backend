@@ -34,6 +34,7 @@ async function callLLM(messages, maxTokens) {
       messages: callMessages,
       temperature: 0,
       max_tokens: maxTokens,
+      extra_body: { enable_thinking: false },
     });
 
     lastRaw = response.choices[0].message.content;
