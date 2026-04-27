@@ -112,6 +112,7 @@ router.post('/', authMiddleware, async (req, res) => {
   try {
     preflight = await preflightResume(truncated.resumeText);
   } catch (e) {
+    console.error('preflightResume error:', e.message, e.status, e.code);
     if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Resume validation failed. Please try again.' });
     return res.status(500).json({ error: 'Failed to validate resume' });
   }

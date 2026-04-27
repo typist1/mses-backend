@@ -126,7 +126,7 @@ const authController = {
   async handleToken(req, res) {
     try {
       const { idToken } = req.body;
-      console.log("Body:", req.body);
+      //console.log("Body:", req.body);
 
       if (!idToken) {
         return res.status(400).json({ error: 'No ID token provided' });

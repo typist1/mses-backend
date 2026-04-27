@@ -3,7 +3,7 @@ import { COURSES_MINIFIED } from '../assets/MSESCourses.js';
 
 let _client;
 function getClient() {
-  if (!_client) _client = new OpenAI({ apiKey: process.env.DEEPSEEK_API_KEY, baseURL: 'https://api.deepseek.com' });
+  if (!_client) _client = new OpenAI({ apiKey: process.env.QWEN_API_KEY, baseURL: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1' });
   return _client;
 }
 
@@ -30,7 +30,7 @@ async function callLLM(messages, maxTokens) {
         : messages;
 
     const response = await client.chat.completions.create({
-      model: 'deepseek-chat',
+      model: 'qwen3.6-plus',
       messages: callMessages,
       temperature: 0,
       max_tokens: maxTokens,
