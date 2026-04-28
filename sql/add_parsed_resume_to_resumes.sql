@@ -1,2 +1,0 @@
-ALTER TABLE resumes ADD COLUMN IF NOT EXISTS parsed_resume JSONB;
-ALTER TABLE analyses DROP COLUMN IF EXISTS parsed_resume;

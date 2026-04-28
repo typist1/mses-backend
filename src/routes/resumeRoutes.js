@@ -1,7 +1,10 @@
 import express from 'express';
 import multer from 'multer';
+import mammoth from 'mammoth';
+import { extractText as extractPDFText } from 'unpdf';
 import { supabase } from '../../supabase.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import { parseResume, truncateInputs } from '../services/llmService.js';
 
 const router = express.Router();
 
@@ -265,6 +268,64 @@ router.put('/:id/active', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Error in PUT /resumes/:id/active:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// POST /resumes/:id/parse - parse (or return cached) parsed_resume JSON
+router.post('/:id/parse', authMiddleware, async (req, res) => {
+  try {
+    const userId = await getSupabaseUserId(req.user.uid);
+    const resumeId = req.params.id;
+
+    const { data: resume, error: fetchError } = await supabase
+      .from('resumes')
+      .select('*')
+      .eq('id', resumeId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !resume) {
+      return res.status(404).json({ error: 'Resume not found' });
+    }
+
+    if (resume.parsed_resume) {
+      return res.json({ parsed_resume: resume.parsed_resume });
+    }
+
+    // Download file from Supabase storage
+    const { data: fileBlob, error: dlError } = await supabase.storage
+      .from('Resumes')
+      .download(resume.file_path);
+
+    if (dlError || !fileBlob) {
+      return res.status(500).json({ error: 'Failed to download resume file' });
+    }
+
+    const buffer = Buffer.from(await fileBlob.arrayBuffer());
+
+    let text = '';
+    if (resume.file_name.endsWith('.pdf')) {
+      const uint8Array = new Uint8Array(buffer);
+      const { text: pdfText } = await extractPDFText(uint8Array, { mergePages: true });
+      text = pdfText;
+    } else {
+      const result = await mammoth.extractRawText({ buffer });
+      text = result.value;
+    }
+
+    if (text.trim().length < 200) {
+      return res.status(400).json({ error: 'Could not extract enough text from this resume' });
+    }
+
+    const { resumeText } = truncateInputs(text, '');
+    const parsedResume = await parseResume(resumeText);
+
+    await supabase.from('resumes').update({ parsed_resume: parsedResume }).eq('id', resumeId);
+
+    return res.json({ parsed_resume: parsedResume });
+  } catch (error) {
+    console.error('Error in POST /resumes/:id/parse:', error);
+    return res.status(500).json({ error: error.message || 'Failed to parse resume' });
   }
 });
 

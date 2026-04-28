@@ -1,12 +1,4 @@
 export const COURSES = [
-  {"c":"ISEN-401","t":"History and Politics of Resource Innovation","k":["energy policy","energy transition","energy history","climate legislation","infrastructure politics"]},
-  {"c":"ISEN-402","t":"Fundamentals of Natural Resources Distribution","k":["grid operations","electricity distribution","renewables integration","natural gas","energy stakeholders"]},
-  {"c":"ISEN-404","t":"Resource Markets Design, Regulation, and Reform","k":["electricity market design","utility regulation","FERC","wholesale power markets","retail energy policy"]},
-  {"c":"ISEN-405","t":"Corporate Sustainability and Value Creation","k":["ESG strategy","corporate sustainability","stakeholder management","sustainability governance","CSR"]},
-  {"c":"ISEN-407","t":"Energy and Sustainability Economics","k":["energy economics","carbon pricing","market externalities","resource pricing","demand forecasting"]},
-  {"c":"ISEN-408","t":"Finance Fundamentals for Energy and Sustainability","k":["corporate finance","financial modeling","DCF valuation","capital markets","investment risk"]},
-  {"c":"ISEN-409","t":"Energy and Sustainability Market Foundations","k":["microeconomics","energy market analysis","regulatory economics","market competition","pricing strategy"]},
-  {"c":"ISEN-411","t":"ESG, Reporting, and Tools for Energy & Sustainability","k":["ESG reporting","GHG accounting","carbon footprint","TCFD","sustainability metrics"]},
   {"c":"ISEN-421","t":"Scaling Sustainable Technology","k":["technology commercialization","cleantech scaling","go-to-market","product development","business development"]},
   {"c":"ISEN-422","t":"Electrify Everything: EVs and Beneficial Electrification","k":["electric vehicles","EV charging infrastructure","transportation electrification","beneficial electrification","demand flexibility"]},
   {"c":"ISEN-431","t":"Advanced Topics: Storage and Microgrids","k":["energy storage","battery storage","BESS","microgrids","distributed energy resources"]},
@@ -27,9 +19,7 @@ export const COURSES = [
   {"c":"ISEN-473","t":"The Future of Food and Agriculture","k":["agtech","precision agriculture","food innovation","food system disruption","alternative proteins"]},
   {"c":"ISEN-474","t":"Life Cycle Assessment: Business Applications","k":["life cycle assessment","LCA","Scope 1 2 3 emissions","carbon accounting","environmental impact analysis"]},
   {"c":"ISEN-475","t":"Land and Climate Change","k":["land use planning","nature-based solutions","carbon sequestration","climate adaptation","land policy"]},
-  {"c":"ISEN-476","t":"Ethics & Leadership in the Climate Crisis","k":["climate ethics","environmental justice","political economy","corporate climate responsibility","climate policy critique"]},
-  {"c":"ISEN-497","t":"Strategy & Project Management Fundamentals","k":["project management","strategy consulting","stakeholder management","project scoping","structured problem solving"]},
-  {"c":"ISEN-498","t":"Energy and Sustainability Project Practicum","k":["energy consulting","sustainability consulting","project delivery","client management","team leadership"]}
+  {"c":"ISEN-476","t":"Ethics & Leadership in the Climate Crisis","k":["climate ethics","environmental justice","political economy","corporate climate responsibility","climate policy critique"]}
 ];
 
 export const COURSES_MINIFIED = JSON.stringify(COURSES);
