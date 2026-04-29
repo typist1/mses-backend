@@ -1,21 +1,21 @@
 import { supabase } from '../../supabase.js';
 
 export default {
-  async createUser({ uid, username, email, firstname, lastname }) {
+  async createUser({ uid, username, email }) {
     const { data, error } = await supabase
       .from('users')
-      .insert({ firebase_uid: uid, username, email, firstname, lastname })
-      .select('id, firebase_uid, username, email, firstname, lastname')
+      .insert({ firebase_uid: uid, username, email })
+      .select('id, firebase_uid, username, email')
       .single();
     if (error) throw error;
     return { id: data.id, firebaseUid: data.firebase_uid, username: data.username, email: data.email };
   },
 
-  async upsertUser({ uid, username, email, firstname, lastname }) {
+  async upsertUser({ uid, username, email }) {
     const { error } = await supabase
       .from('users')
       .upsert(
-        { firebase_uid: uid, username, email, firstname, lastname },
+        { firebase_uid: uid, username, email },
         { onConflict: 'firebase_uid' }
       );
     if (error) throw error;

@@ -4,37 +4,23 @@ import userRepository from '../repositories/userRepository.js';
 const authController = {
   async signup(req, res) {
     try {
-      const { email, password, username, firstname, lastname } = req.body;
+      const { idToken, username } = req.body;
 
-      if (!email || !password || !username) {
-        return res.status(400).json({
-          error: 'Email, password, and username are required',
-        });
+      if (!idToken || !username) {
+        return res.status(400).json({ error: 'ID token and username are required' });
       }
 
-      const userRecord = await admin.auth().createUser({
-        email,
-        password,
-        displayName: username,
-      });
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
 
       const user = await userRepository.createUser({
-        uid: userRecord.uid,
+        uid: decodedToken.uid,
         username,
-        email,
-        firstname,
-        lastname
-      })
-
-      res.status(201).json({
-        message: 'User created successfully',
-        user
+        email: decodedToken.email,
       });
+
+      res.status(201).json({ message: 'User created successfully', user });
     } catch (error) {
       console.error('Signup error:', error);
-      if (error.code === 'auth/email-already-exists') {
-        return res.status(400).json({ error: 'Email already in use' });
-      }
       if (error.code === '23505' || error.code === 'ER_DUP_ENTRY') {
         return res.status(400).json({ error: 'Username already exists' });
       }
@@ -147,8 +133,6 @@ const authController = {
         uid: decodedToken.uid,
         username,
         email: decodedToken.email,
-        firstname: fullName ? fullName.split(' ')[0] : null,
-        lastname: fullName ? fullName.split(' ').slice(1).join(' ') : null,
       });
 
       res.cookie('session', idToken, {
