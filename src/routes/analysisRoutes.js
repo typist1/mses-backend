@@ -7,14 +7,13 @@ import {
   sanitizeJD,
   parseResume,
   gapAnalysis,
-  rewriteExperienceProjects,
-  rewriteSummarySkills,
+  generateSuggestions,
   PROMPT_VERSION,
 } from '../services/llmService.js';
 import {
-  checkFabricatedNumerics,
   buildScoreBreakdown,
   checkRateLimit,
+  jaccardSimilarity,
 } from '../services/analysisUtils.js';
 
 const router = express.Router();
@@ -29,17 +28,6 @@ async function getSupabaseUserId(firebaseUid) {
   return data.id;
 }
 
-function extractAllBullets(resumeData) {
-  const bullets = [];
-  for (const exp of resumeData.experience || []) {
-    for (const b of exp.bullets || []) bullets.push(b);
-  }
-  for (const proj of resumeData.projects || []) {
-    for (const b of proj.bullets || []) bullets.push(b);
-  }
-  return bullets;
-}
-
 function isNonEnglish(text) {
   const nonAscii = (text.match(/[^\x00-\x7F]/g) || []).length;
   return nonAscii / text.length > 0.3;
@@ -47,7 +35,7 @@ function isNonEnglish(text) {
 
 // POST /analyze
 router.post('/', authMiddleware, async (req, res) => {
-  const { resumeText, jdText, resumeId } = req.body;
+  const { resumeText, jdText, resumeId, resumeTextEdited } = req.body;
 
   if (!resumeText || !jdText) {
     return res.status(400).json({ error: 'resumeText and jdText are required' });
@@ -73,6 +61,12 @@ router.post('/', authMiddleware, async (req, res) => {
     });
   }
 
+  // JD length guard
+  const JD_CHAR_LIMIT = 20000;
+  if (jdText.length > JD_CHAR_LIMIT) {
+    return res.status(400).json({ error: `Job description is too long (${jdText.length.toLocaleString()} characters). Please trim it to under ${JD_CHAR_LIMIT.toLocaleString()} characters and try again.` });
+  }
+
   // Short resume guard
   if (resumeText.trim().length < 200) {
     return res.status(400).json({
@@ -85,66 +79,60 @@ router.post('/', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'English-only resumes are supported at this time.' });
   }
 
-  // Validate resumeId belongs to user if provided
-  if (resumeId) {
-    const { data: resumeRow } = await supabase
-      .from('resumes')
-      .select('id')
-      .eq('id', resumeId)
-      .eq('user_id', userId)
-      .single();
-    if (!resumeRow) {
-      return res.status(400).json({ error: 'Invalid resumeId' });
-    }
-  }
-
-  // Truncate inputs
+  // Truncate resume if needed
   const truncated = truncateInputs(resumeText, jdText);
   const flags = {
     truncated_resume: truncated.truncated_resume,
-    truncated_jd: truncated.truncated_jd,
     sparse_jd: false,
-    flagged_bullets: [],
   };
 
-  // Pre-flight
-  let preflight;
+  // Pre-flight + JD sanitize (independent — run in parallel)
+  let preflight, jdResult;
   try {
-    preflight = await preflightResume(truncated.resumeText);
+    [preflight, jdResult] = await Promise.all([
+      preflightResume(truncated.resumeText),
+      sanitizeJD(truncated.jdText),
+    ]);
   } catch (e) {
-    console.error('preflightResume error:', e.message, e.status, e.code);
-    if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Resume validation failed. Please try again.' });
-    return res.status(500).json({ error: 'Failed to validate resume' });
+    console.error('Validation error:', e.message, e.code);
+    if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Validation failed. Please try again.' });
+    return res.status(500).json({ error: 'Failed to validate inputs' });
   }
   if (!preflight.is_resume) {
     return res.status(400).json({ error: preflight.rejection_reason || 'The uploaded document does not appear to be a resume.' });
-  }
-
-  // JD sanitize
-  let jdResult;
-  try {
-    jdResult = await sanitizeJD(truncated.jdText);
-  } catch (e) {
-    if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Job description validation failed. Please try again.' });
-    return res.status(500).json({ error: 'Failed to validate job description' });
   }
   if (!jdResult.is_valid_job_description) {
     return res.status(400).json({ error: jdResult.rejection_reason || 'The provided text does not appear to be a valid job description.' });
   }
 
-  const cleanedJd = jdResult.cleaned_jd;
+  const cleanedJd = jdResult.cleaned_jd || truncated.jdText;
   if (cleanedJd.length < 300) flags.sparse_jd = true;
 
-  // Phase 1: parse resume (use cached parse on the resume row if available)
+  // Phase 1: parse resume (use cached parse unless text changed significantly)
   let parsedResume;
+  let resumeConflict = false;
   if (resumeId) {
     const { data: resumeRow } = await supabase
       .from('resumes')
-      .select('parsed_resume')
+      .select('parsed_resume, resume_text')
       .eq('id', resumeId)
+      .eq('user_id', userId)
       .single();
 
-    if (resumeRow?.parsed_resume) {
+    if (!resumeRow) {
+      return res.status(400).json({ error: 'Invalid resumeId' });
+    }
+
+    let useCache = !!resumeRow?.parsed_resume;
+    if (useCache && resumeTextEdited && resumeRow.resume_text) {
+      const similarity = jaccardSimilarity(resumeRow.resume_text, truncated.resumeText);
+      if (similarity < 0.85) {
+        useCache = false;
+        resumeConflict = true;
+      }
+    }
+
+    if (useCache) {
       parsedResume = resumeRow.parsed_resume;
     } else {
       try {
@@ -153,7 +141,9 @@ router.post('/', authMiddleware, async (req, res) => {
         if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Resume parsing failed. Please try again.' });
         return res.status(500).json({ error: 'Failed to parse resume' });
       }
-      await supabase.from('resumes').update({ parsed_resume: parsedResume }).eq('id', resumeId);
+      if (!resumeConflict) {
+        await supabase.from('resumes').update({ parsed_resume: parsedResume }).eq('id', resumeId);
+      }
     }
   } else {
     try {
@@ -174,35 +164,16 @@ router.post('/', authMiddleware, async (req, res) => {
   }
   if ((gapResult.skills || []).length < 5) flags.sparse_jd = true;
 
-  // Phase 3: rewrite (parallel chunks)
-  let chunkA, chunkB;
+  // Phase 3: generate suggestions
+  let suggestionsResult;
   try {
-    [chunkA, chunkB] = await Promise.all([
-      rewriteExperienceProjects(parsedResume, gapResult, jdResult.job_title),
-      rewriteSummarySkills(parsedResume, gapResult, jdResult.job_title),
-    ]);
+    suggestionsResult = await generateSuggestions(parsedResume, gapResult, jdResult.job_title);
   } catch (e) {
     if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Resume optimization failed. Please try again.' });
-    return res.status(500).json({ error: 'Failed to optimize resume' });
+    return res.status(500).json({ error: 'Failed to generate suggestions' });
   }
 
-  const optimizedResume = {
-    contact: parsedResume.contact,
-    summary: chunkB.summary,
-    education: parsedResume.education,
-    experience: chunkA.experience,
-    projects: chunkA.projects,
-    skills: chunkB.skills,
-    certifications: parsedResume.certifications,
-    honors_awards: parsedResume.honors_awards,
-    extra_sections: parsedResume.extra_sections,
-  };
-  const changeLog = [...(chunkA.change_log || []), ...(chunkB.change_log || [])];
-
-  // Fabrication check
-  const originalBullets = extractAllBullets(parsedResume);
-  const rewrittenBullets = extractAllBullets(optimizedResume);
-  flags.flagged_bullets = checkFabricatedNumerics(originalBullets, rewrittenBullets);
+  const changeLog = suggestionsResult.suggestions || [];
 
   const scoreBreakdown = buildScoreBreakdown(gapResult.skills || []);
   const overallFitScore = gapResult.overall_fit_score;
@@ -216,10 +187,11 @@ router.post('/', authMiddleware, async (req, res) => {
       job_title: jdResult.job_title,
       company: jdResult.company,
       overall_fit_score: overallFitScore,
+      parsed_resume: parsedResume,
       gap_analysis: gapResult,
-      optimized_resume: optimizedResume,
+      optimized_resume: null,
       change_log: changeLog,
-      flags,
+      flags: { ...flags, resume_conflict: resumeConflict },
       prompt_version: PROMPT_VERSION,
     })
     .select()
@@ -238,9 +210,8 @@ router.post('/', authMiddleware, async (req, res) => {
     company: jdResult.company,
     parsed_resume: parsedResume,
     gap_analysis: gapResult,
-    optimized_resume: optimizedResume,
     change_log: changeLog,
-    flags,
+    flags: { ...flags, resume_conflict: resumeConflict },
     prompt_version: PROMPT_VERSION,
     created_at: inserted.created_at,
   });

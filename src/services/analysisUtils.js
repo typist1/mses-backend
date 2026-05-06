@@ -2,22 +2,11 @@ import { supabase } from '../../supabase.js';
 
 const RATE_LIMIT = 3;
 
-export function checkFabricatedNumerics(originalBullets, rewrittenBullets) {
-  const numRegex = /\$?[\d,]+(?:\.\d+)?%?/g;
-  const flagged = [];
-  const len = Math.max(originalBullets.length, rewrittenBullets.length);
-
-  for (let i = 0; i < len; i++) {
-    const original = originalBullets[i] || '';
-    const rewritten = rewrittenBullets[i] || '';
-    const originalNums = new Set(original.match(numRegex) || []);
-    const rewrittenNums = rewritten.match(numRegex) || [];
-    const fabricated = rewrittenNums.filter((n) => !originalNums.has(n));
-    if (fabricated.length > 0) {
-      flagged.push({ index: i, bullet: rewritten, fabricated_values: fabricated });
-    }
-  }
-  return flagged;
+export function jaccardSimilarity(a, b) {
+  const setA = new Set(a.toLowerCase().split(/\s+/));
+  const setB = new Set(b.toLowerCase().split(/\s+/));
+  const intersection = [...setA].filter(w => setB.has(w)).length;
+  return intersection / (setA.size + setB.size - intersection);
 }
 
 export function buildScoreBreakdown(skillsArray) {

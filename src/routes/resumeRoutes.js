@@ -115,6 +115,7 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
         is_active: false,
         parent_resume_id: parentResumeId,
         version_label: parentResumeId ? req._versionLabel : null,
+        resume_text: req.body.resumeText || null,
       })
       .select()
       .single();
@@ -267,6 +268,49 @@ router.put('/:id/active', authMiddleware, async (req, res) => {
     res.json({ message: 'Resume set as active successfully' });
   } catch (error) {
     console.error('Error in PUT /resumes/:id/active:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// PATCH /resumes/:id - update cached parsed_resume and/or resume_text (used after conflict resolution)
+router.patch('/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = await getSupabaseUserId(req.user.uid);
+    const resumeId = req.params.id;
+
+    const { data: existing, error: fetchError } = await supabase
+      .from('resumes')
+      .select('id')
+      .eq('id', resumeId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !existing) {
+      return res.status(404).json({ error: 'Resume not found' });
+    }
+
+    const updates = {};
+    if (req.body.parsed_resume !== undefined) updates.parsed_resume = req.body.parsed_resume;
+    if (req.body.resume_text !== undefined) updates.resume_text = req.body.resume_text;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const { error: updateError } = await supabase
+      .from('resumes')
+      .update(updates)
+      .eq('id', resumeId)
+      .eq('user_id', userId);
+
+    if (updateError) {
+      console.error('Error updating resume:', updateError);
+      return res.status(500).json({ error: 'Failed to update resume' });
+    }
+
+    res.json({ message: 'Resume updated successfully' });
+  } catch (error) {
+    console.error('Error in PATCH /resumes/:id:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
