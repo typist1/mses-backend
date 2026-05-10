@@ -167,7 +167,7 @@ router.post('/', authMiddleware, async (req, res) => {
   // Phase 3: generate suggestions
   let suggestionsResult;
   try {
-    suggestionsResult = await generateSuggestions(parsedResume, gapResult, jdResult.job_title);
+    suggestionsResult = await generateSuggestions(parsedResume, gapResult, jdResult.job_title, cleanedJd);
   } catch (e) {
     if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Resume optimization failed. Please try again.' });
     return res.status(500).json({ error: 'Failed to generate suggestions' });
