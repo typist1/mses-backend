@@ -13,7 +13,6 @@ import {
 import {
   buildScoreBreakdown,
   checkRateLimit,
-  jaccardSimilarity,
 } from '../services/analysisUtils.js';
 
 const router = express.Router();
@@ -35,7 +34,7 @@ function isNonEnglish(text) {
 
 // POST /analyze
 router.post('/', authMiddleware, async (req, res) => {
-  const { resumeText, jdText, resumeId, resumeTextEdited } = req.body;
+  const { resumeText, jdText, resumeId } = req.body;
 
   if (!resumeText || !jdText) {
     return res.status(400).json({ error: 'resumeText and jdText are required' });
@@ -108,13 +107,12 @@ router.post('/', authMiddleware, async (req, res) => {
   const cleanedJd = jdResult.cleaned_jd || truncated.jdText;
   if (cleanedJd.length < 300) flags.sparse_jd = true;
 
-  // Phase 1: parse resume (use cached parse unless text changed significantly)
+  // Phase 1: parse resume (use cached parse if available)
   let parsedResume;
-  let resumeConflict = false;
   if (resumeId) {
     const { data: resumeRow } = await supabase
       .from('resumes')
-      .select('parsed_resume, resume_text')
+      .select('parsed_resume')
       .eq('id', resumeId)
       .eq('user_id', userId)
       .single();
@@ -123,16 +121,7 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Invalid resumeId' });
     }
 
-    let useCache = !!resumeRow?.parsed_resume;
-    if (useCache && resumeTextEdited && resumeRow.resume_text) {
-      const similarity = jaccardSimilarity(resumeRow.resume_text, truncated.resumeText);
-      if (similarity < 0.85) {
-        useCache = false;
-        resumeConflict = true;
-      }
-    }
-
-    if (useCache) {
+    if (resumeRow.parsed_resume) {
       parsedResume = resumeRow.parsed_resume;
     } else {
       try {
@@ -141,9 +130,7 @@ router.post('/', authMiddleware, async (req, res) => {
         if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Resume parsing failed. Please try again.' });
         return res.status(500).json({ error: 'Failed to parse resume' });
       }
-      if (!resumeConflict) {
-        await supabase.from('resumes').update({ parsed_resume: parsedResume }).eq('id', resumeId);
-      }
+      await supabase.from('resumes').update({ parsed_resume: parsedResume }).eq('id', resumeId);
     }
   } else {
     try {
@@ -191,7 +178,7 @@ router.post('/', authMiddleware, async (req, res) => {
       gap_analysis: gapResult,
       optimized_resume: null,
       change_log: changeLog,
-      flags: { ...flags, resume_conflict: resumeConflict },
+      flags,
       prompt_version: PROMPT_VERSION,
     })
     .select()
@@ -211,7 +198,7 @@ router.post('/', authMiddleware, async (req, res) => {
     parsed_resume: parsedResume,
     gap_analysis: gapResult,
     change_log: changeLog,
-    flags: { ...flags, resume_conflict: resumeConflict },
+    flags,
     prompt_version: PROMPT_VERSION,
     created_at: inserted.created_at,
   });

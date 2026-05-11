@@ -2,13 +2,6 @@ import { supabase } from '../../supabase.js';
 
 const RATE_LIMIT = 3;
 
-export function jaccardSimilarity(a, b) {
-  const setA = new Set(a.toLowerCase().split(/\s+/));
-  const setB = new Set(b.toLowerCase().split(/\s+/));
-  const intersection = [...setA].filter(w => setB.has(w)).length;
-  return intersection / (setA.size + setB.size - intersection);
-}
-
 export function buildScoreBreakdown(skillsArray) {
   const required = skillsArray.filter((s) => s.importance === 0);
   const recommended = skillsArray.filter((s) => s.importance === 1);
