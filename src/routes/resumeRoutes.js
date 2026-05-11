@@ -292,6 +292,7 @@ router.patch('/:id', authMiddleware, async (req, res) => {
     const updates = {};
     if (req.body.parsed_resume !== undefined) updates.parsed_resume = req.body.parsed_resume;
     if (req.body.resume_text !== undefined) updates.resume_text = req.body.resume_text;
+    if (req.body.file_name !== undefined) updates.file_name = req.body.file_name;
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
@@ -315,6 +316,66 @@ router.patch('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// PUT /resumes/:id/file - replace the stored file and update parsed_resume cache
+router.put('/:id/file', authMiddleware, upload.single('file'), async (req, res) => {
+  try {
+    const userId = await getSupabaseUserId(req.user.uid);
+    const resumeId = req.params.id;
+
+    const { data: existing, error: fetchError } = await supabase
+      .from('resumes')
+      .select('*')
+      .eq('id', resumeId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !existing) {
+      return res.status(404).json({ error: 'Resume not found' });
+    }
+
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const timestamp = Date.now();
+    const fileName = `${timestamp}-${file.originalname}`;
+    const filePath = `${userId}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('Resumes')
+      .upload(filePath, file.buffer, { contentType: file.mimetype, upsert: false });
+
+    if (uploadError) {
+      return res.status(500).json({ error: 'Failed to upload file', detail: uploadError.message });
+    }
+
+    // Delete old file after new one is safely uploaded
+    await supabase.storage.from('Resumes').remove([existing.file_path]);
+
+    const updates = { file_name: file.originalname, file_path: filePath, file_size: file.size };
+    if (req.body.parsed_resume) {
+      try { updates.parsed_resume = JSON.parse(req.body.parsed_resume); } catch (_) {}
+    }
+
+    const { data: updated, error: dbError } = await supabase
+      .from('resumes')
+      .update(updates)
+      .eq('id', resumeId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (dbError) {
+      await supabase.storage.from('Resumes').remove([filePath]);
+      return res.status(500).json({ error: 'Failed to update resume record' });
+    }
+
+    res.json({ message: 'Resume updated successfully', resume: updated });
+  } catch (error) {
+    console.error('Error in PUT /resumes/:id/file:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
 // POST /resumes/:id/parse - parse (or return cached) parsed_resume JSON
 router.post('/:id/parse', authMiddleware, async (req, res) => {
   try {
@@ -333,7 +394,7 @@ router.post('/:id/parse', authMiddleware, async (req, res) => {
     }
 
     if (resume.parsed_resume) {
-      return res.json({ parsed_resume: resume.parsed_resume });
+      return res.json({ parsed_resume: resume.parsed_resume, file_name: resume.file_name });
     }
 
     // Download file from Supabase storage
@@ -366,7 +427,7 @@ router.post('/:id/parse', authMiddleware, async (req, res) => {
 
     await supabase.from('resumes').update({ parsed_resume: parsedResume }).eq('id', resumeId);
 
-    return res.json({ parsed_resume: parsedResume });
+    return res.json({ parsed_resume: parsedResume, file_name: resume.file_name });
   } catch (error) {
     console.error('Error in POST /resumes/:id/parse:', error);
     return res.status(500).json({ error: error.message || 'Failed to parse resume' });

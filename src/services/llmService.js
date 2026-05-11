@@ -151,7 +151,7 @@ ${rawText}
 </job_description_text>`,
       },
     ],
-    1000
+    8192
   );
 }
 
