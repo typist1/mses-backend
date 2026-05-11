@@ -1,7 +1,7 @@
 # Backend — CLAUDE.md
 
 ## Stack
-Express 5 · Node.js ESM (`"type": "module"`) · Firebase Admin SDK · Supabase JS client · OpenAI SDK (pointed at Alibaba DashScope)
+Express 5 · Node.js ESM (`"type": "module"`) · Firebase Admin SDK · Supabase JS client · Anthropic SDK
 
 ## Routes
 | Mount | File | Purpose |
@@ -26,8 +26,7 @@ Express 5 · Node.js ESM (`"type": "module"`) · Firebase Admin SDK · Supabase 
 Every protected route: Firebase token → `authMiddleware` → `getSupabaseUserId(req.user.uid)` → Supabase query
 
 ## LLM Details
-- Model: `qwen3.6-plus`, `temperature: 0`, `enable_thinking: false`
-- Endpoint: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`
+- Model: `claude-3-5-haiku-20241022` via Anthropic SDK
 - Retries once on JSON parse failure (sends raw response back asking for clean JSON)
 - Resume truncated to 10,000 chars (70% head / 30% tail split) if longer
 - Max 20 skills in gap analysis output
@@ -37,7 +36,7 @@ Parsed resume cached in `resumes.parsed_resume`. Before re-parsing: Jaccard simi
 
 ## Env Vars Required
 ```
-QWEN_API_KEY                    # Alibaba DashScope
+CLAUDE_API_KEY                  # Anthropic
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 DATABASE_URL                    # Supabase Postgres connection string

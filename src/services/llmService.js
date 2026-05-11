@@ -1,9 +1,9 @@
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { COURSES_MINIFIED } from '../assets/MSESCourses.js';
 
 let _client;
 function getClient() {
-  if (!_client) _client = new OpenAI({ apiKey: process.env.QWEN_API_KEY, baseURL: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1' });
+  if (!_client) _client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
   return _client;
 }
 
@@ -14,11 +14,14 @@ async function callLLM(messages, maxTokens) {
   const client = getClient();
   let lastRaw = null;
 
+  const systemMsg = messages[0]?.role === 'system' ? messages[0].content : undefined;
+  const baseMessages = messages.filter(m => m.role !== 'system');
+
   for (let attempt = 0; attempt < 2; attempt++) {
     const callMessages =
       attempt === 1 && lastRaw !== null
         ? [
-            ...messages,
+            ...baseMessages,
             { role: 'assistant', content: lastRaw },
             {
               role: 'user',
@@ -26,17 +29,16 @@ async function callLLM(messages, maxTokens) {
                 'Your last response was not valid JSON. Return only the JSON object, no other text, no markdown fences.',
             },
           ]
-        : messages;
+        : baseMessages;
 
-    const response = await client.chat.completions.create({
-      model: 'qwen3.6-plus',
-      messages: callMessages,
-      temperature: 0,
+    const response = await client.messages.create({
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: maxTokens,
-      extra_body: { enable_thinking: false },
+      ...(systemMsg ? { system: systemMsg } : {}),
+      messages: callMessages,
     });
 
-    lastRaw = response.choices[0].message.content;
+    lastRaw = response.content[0].text;
     const stripped = lastRaw
       .replace(/^```json\s*/i, '')
       .replace(/^```\s*/, '')
