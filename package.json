@@ -25,6 +25,7 @@
     "firebase-admin": "^13.6.0",
     "fs": "^0.0.1-security",
     "ini": "^5.0.0",
+    "libreoffice-convert": "^1.8.1",
     "mammoth": "^1.12.0",
     "multer": "^2.1.1",
     "mysql2": "^3.12.0",

@@ -26,7 +26,7 @@ Express 5 · Node.js ESM (`"type": "module"`) · Firebase Admin SDK · Supabase 
 Every protected route: Firebase token → `authMiddleware` → `getSupabaseUserId(req.user.uid)` → Supabase query
 
 ## LLM Details
-- Model: `claude-3-5-haiku-20241022` via Anthropic SDK
+- Model: `claude-haiku-4-5-20251001` via Anthropic SDK
 - Retries once on JSON parse failure (sends raw response back asking for clean JSON)
 - Resume truncated to 10,000 chars (70% head / 30% tail split) if longer
 - Max 20 skills in gap analysis output

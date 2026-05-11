@@ -2,6 +2,10 @@ import mammoth from "mammoth";
 import multer from "multer";
 import { extractText as extractPDFText } from "unpdf";
 import { scrapeJobPage } from "../scrape.js";
+import libre from "libreoffice-convert";
+import { promisify } from "util";
+
+const libreConvert = promisify(libre.convert);
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -62,7 +66,22 @@ const pdfController = {
             console.error("Error extracting text:", err.message);
             res.status(500).json({ error: "Failed to extract text", details: err.message });
         }
-    }
+    },
+
+    async convertToPdf(req, res) {
+        try {
+            const file = req.file;
+            if (!file) return res.status(400).json({ error: "No file uploaded" });
+
+            const pdfBuffer = await libreConvert(file.buffer, ".pdf", undefined);
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader("Content-Disposition", `attachment; filename="resume.pdf"`);
+            res.send(pdfBuffer);
+        } catch (err) {
+            console.error("PDF conversion error:", err.message);
+            res.status(500).json({ error: "Failed to convert to PDF", details: err.message });
+        }
+    },
 };
 
 export default pdfController;
