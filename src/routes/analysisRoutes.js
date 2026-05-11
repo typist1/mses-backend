@@ -229,6 +229,28 @@ router.get('/', authMiddleware, async (req, res) => {
   return res.json({ analyses: data });
 });
 
+// PATCH /analyze/:id/optimized — store the accepted optimized resume
+router.patch('/:id/optimized', authMiddleware, async (req, res) => {
+  const { optimized_resume } = req.body;
+  if (!optimized_resume) return res.status(400).json({ error: 'optimized_resume is required' });
+
+  let userId;
+  try {
+    userId = await getSupabaseUserId(req.user.uid);
+  } catch {
+    return res.status(401).json({ error: 'User not found' });
+  }
+
+  const { error } = await supabase
+    .from('analyses')
+    .update({ optimized_resume })
+    .eq('id', req.params.id)
+    .eq('user_id', userId);
+
+  if (error) return res.status(500).json({ error: 'Failed to update analysis' });
+  return res.json({ ok: true });
+});
+
 // GET /analyze/:id — fetch single analysis
 router.get('/:id', authMiddleware, async (req, res) => {
   let userId;
