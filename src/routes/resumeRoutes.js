@@ -84,27 +84,6 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
       return res.status(500).json({ error: 'Failed to upload file to storage', detail: uploadError.message });
     }
 
-    // Validate parentResumeId if provided
-    const parentResumeId = req.body.parentResumeId ? parseInt(req.body.parentResumeId, 10) : null;
-    if (parentResumeId) {
-      const { data: parentRow } = await supabase
-        .from('resumes')
-        .select('id, file_name')
-        .eq('id', parentResumeId)
-        .eq('user_id', userId)
-        .single();
-      if (!parentRow) {
-        await supabase.storage.from('Resumes').remove([filePath]);
-        return res.status(400).json({ error: 'Invalid parentResumeId' });
-      }
-      // Auto-increment version label
-      const { count } = await supabase
-        .from('resumes')
-        .select('*', { count: 'exact', head: true })
-        .eq('parent_resume_id', parentResumeId);
-      req._versionLabel = `v${(count || 0) + 2}`;
-    }
-
     const { data: resume, error: dbError } = await supabase
       .from('resumes')
       .insert({
@@ -113,9 +92,6 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
         file_path: filePath,
         file_size: file.size,
         is_active: false,
-        parent_resume_id: parentResumeId,
-        version_label: parentResumeId ? req._versionLabel : null,
-        resume_text: req.body.resumeText || null,
       })
       .select()
       .single();
@@ -291,7 +267,6 @@ router.patch('/:id', authMiddleware, async (req, res) => {
 
     const updates = {};
     if (req.body.parsed_resume !== undefined) updates.parsed_resume = req.body.parsed_resume;
-    if (req.body.resume_text !== undefined) updates.resume_text = req.body.resume_text;
     if (req.body.file_name !== undefined) updates.file_name = req.body.file_name;
 
     if (Object.keys(updates).length === 0) {

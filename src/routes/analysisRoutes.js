@@ -174,9 +174,7 @@ router.post('/', authMiddleware, async (req, res) => {
       job_title: jdResult.job_title,
       company: jdResult.company,
       overall_fit_score: overallFitScore,
-      parsed_resume: parsedResume,
       gap_analysis: gapResult,
-      optimized_resume: null,
       change_log: changeLog,
       flags,
       prompt_version: PROMPT_VERSION,
@@ -229,28 +227,6 @@ router.get('/', authMiddleware, async (req, res) => {
   return res.json({ analyses: data });
 });
 
-// PATCH /analyze/:id/optimized — store the accepted optimized resume
-router.patch('/:id/optimized', authMiddleware, async (req, res) => {
-  const { optimized_resume } = req.body;
-  if (!optimized_resume) return res.status(400).json({ error: 'optimized_resume is required' });
-
-  let userId;
-  try {
-    userId = await getSupabaseUserId(req.user.uid);
-  } catch {
-    return res.status(401).json({ error: 'User not found' });
-  }
-
-  const { error } = await supabase
-    .from('analyses')
-    .update({ optimized_resume })
-    .eq('id', req.params.id)
-    .eq('user_id', userId);
-
-  if (error) return res.status(500).json({ error: 'Failed to update analysis' });
-  return res.json({ ok: true });
-});
-
 // GET /analyze/:id — fetch single analysis
 router.get('/:id', authMiddleware, async (req, res) => {
   let userId;
@@ -269,7 +245,18 @@ router.get('/:id', authMiddleware, async (req, res) => {
 
   if (error || !data) return res.status(404).json({ error: 'Analysis not found' });
 
-  return res.json(data);
+  let parsed_resume = null;
+  if (data.resume_id) {
+    const { data: resumeRow } = await supabase
+      .from('resumes')
+      .select('parsed_resume')
+      .eq('id', data.resume_id)
+      .eq('user_id', userId)
+      .single();
+    parsed_resume = resumeRow?.parsed_resume ?? null;
+  }
+
+  return res.json({ ...data, parsed_resume });
 });
 
 export default router;
