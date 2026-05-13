@@ -1,6 +1,6 @@
 import { supabase } from '../../supabase.js';
 
-const RATE_LIMIT = 3;
+const RATE_LIMIT = 10;
 
 export function buildScoreBreakdown(skillsArray) {
   const required = skillsArray.filter((s) => s.importance === 0);
@@ -11,7 +11,6 @@ export function buildScoreBreakdown(skillsArray) {
 }
 
 export async function checkRateLimit(userId) {
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { count, error } = await supabase
     .from('analyses')
     .select('*', { count: 'exact', head: true })
