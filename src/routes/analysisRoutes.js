@@ -85,30 +85,8 @@ router.post('/', authMiddleware, async (req, res) => {
     sparse_jd: false,
   };
 
-  // Pre-flight + JD sanitize (independent — run in parallel)
-  let preflight, jdResult;
-  try {
-    [preflight, jdResult] = await Promise.all([
-      preflightResume(truncated.resumeText),
-      sanitizeJD(truncated.jdText),
-    ]);
-  } catch (e) {
-    console.error('Validation error:', e.message, e.code);
-    if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Validation failed. Please try again.' });
-    return res.status(500).json({ error: 'Failed to validate inputs' });
-  }
-  if (!preflight.is_resume) {
-    return res.status(400).json({ error: preflight.rejection_reason || 'The uploaded document does not appear to be a resume.' });
-  }
-  if (!jdResult.is_valid_job_description) {
-    return res.status(400).json({ error: jdResult.rejection_reason || 'The provided text does not appear to be a valid job description.' });
-  }
-
-  const cleanedJd = jdResult.cleaned_jd || truncated.jdText;
-  if (cleanedJd.length < 300) flags.sparse_jd = true;
-
-  // Phase 1: parse resume (use cached parse if available)
-  let parsedResume;
+  // Check for cached parse early (only when resumeId provided — uploaded file)
+  let cachedParsedResume = null;
   if (resumeId) {
     const { data: resumeRow } = await supabase
       .from('resumes')
@@ -121,17 +99,48 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Invalid resumeId' });
     }
 
-    if (resumeRow.parsed_resume) {
-      parsedResume = resumeRow.parsed_resume;
+    cachedParsedResume = resumeRow.parsed_resume || null;
+  }
+
+  // Pre-flight + JD sanitize — skip preflight if resume already validated (cached parse exists)
+  let jdResult;
+  try {
+    if (cachedParsedResume) {
+      jdResult = await sanitizeJD(truncated.jdText);
     } else {
-      try {
-        parsedResume = await parseResume(truncated.resumeText);
-      } catch (e) {
-        if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Resume parsing failed. Please try again.' });
-        return res.status(500).json({ error: 'Failed to parse resume' });
+      let preflight;
+      [preflight, jdResult] = await Promise.all([
+        preflightResume(truncated.resumeText),
+        sanitizeJD(truncated.jdText),
+      ]);
+      if (!preflight.is_resume) {
+        return res.status(400).json({ error: preflight.rejection_reason || 'The uploaded document does not appear to be a resume.' });
       }
-      await supabase.from('resumes').update({ parsed_resume: parsedResume }).eq('id', resumeId);
     }
+  } catch (e) {
+    console.error('Validation error:', e.message, e.code);
+    if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Validation failed. Please try again.' });
+    return res.status(500).json({ error: 'Failed to validate inputs' });
+  }
+  if (!jdResult.is_valid_job_description) {
+    return res.status(400).json({ error: jdResult.rejection_reason || 'The provided text does not appear to be a valid job description.' });
+  }
+
+  const cleanedJd = jdResult.cleaned_jd || truncated.jdText;
+  if (cleanedJd.length < 300) flags.sparse_jd = true;
+
+  // Phase 1: parse resume (use cached parse if available)
+  let parsedResume;
+  if (cachedParsedResume) {
+    parsedResume = cachedParsedResume;
+  } else if (resumeId) {
+    try {
+      parsedResume = await parseResume(truncated.resumeText);
+    } catch (e) {
+      if (e.code === 'JSON_PARSE_FAILED') return res.status(500).json({ error: 'Resume parsing failed. Please try again.' });
+      return res.status(500).json({ error: 'Failed to parse resume' });
+    }
+    await supabase.from('resumes').update({ parsed_resume: parsedResume }).eq('id', resumeId);
   } else {
     try {
       parsedResume = await parseResume(truncated.resumeText);
