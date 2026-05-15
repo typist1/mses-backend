@@ -12,6 +12,7 @@ import {
 } from '../services/llmService.js';
 import {
   buildScoreBreakdown,
+  computeOverallFitScore,
   checkRateLimit,
 } from '../services/analysisUtils.js';
 
@@ -172,7 +173,7 @@ router.post('/', authMiddleware, async (req, res) => {
   const changeLog = suggestionsResult.suggestions || [];
 
   const scoreBreakdown = buildScoreBreakdown(gapResult.skills || []);
-  const overallFitScore = gapResult.overall_fit_score;
+  const overallFitScore = computeOverallFitScore(gapResult.skills || []);
 
   // Persist
   const { data: inserted, error: dbError } = await supabase
@@ -265,7 +266,8 @@ router.get('/:id', authMiddleware, async (req, res) => {
     parsed_resume = resumeRow?.parsed_resume ?? null;
   }
 
-  return res.json({ ...data, parsed_resume });
+  const score_breakdown = buildScoreBreakdown(data.gap_analysis?.skills || []);
+  return res.json({ ...data, parsed_resume, score_breakdown });
 });
 
 export default router;

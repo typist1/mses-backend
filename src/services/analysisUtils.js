@@ -6,8 +6,19 @@ export function buildScoreBreakdown(skillsArray) {
   const required = skillsArray.filter((s) => s.importance === 0);
   const recommended = skillsArray.filter((s) => s.importance === 1);
   const strongRequired = required.filter((s) => s.fit_score >= 3).length;
-  const weakRecommended = recommended.filter((s) => s.fit_score <= 2).length;
-  return `Strong on ${strongRequired}/${required.length} required skills, needs work on ${weakRecommended}/${recommended.length} recommended skills`;
+  const strongRecommended = recommended.filter((s) => s.fit_score >= 3).length;
+  return `Strong on ${strongRequired}/${required.length} required and ${strongRecommended}/${recommended.length} recommended skills`;
+}
+
+export function computeOverallFitScore(skillsArray) {
+  let weightedSum = 0;
+  let maxPossible = 0;
+  for (const s of skillsArray) {
+    const weight = s.importance === 0 ? 2 : 1;
+    weightedSum += s.fit_score * weight;
+    maxPossible += 4 * weight;
+  }
+  return maxPossible > 0 ? Math.round((weightedSum / maxPossible) * 1000) / 10 : 0;
 }
 
 export async function checkRateLimit(userId) {
