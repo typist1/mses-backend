@@ -368,7 +368,7 @@ router.post('/:id/parse', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Resume not found' });
     }
 
-    if (resume.parsed_resume) {
+    if (resume.parsed_resume && !Array.isArray(resume.parsed_resume?.skills)) {
       return res.json({ parsed_resume: resume.parsed_resume, file_name: resume.file_name });
     }
 

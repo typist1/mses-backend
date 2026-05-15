@@ -101,6 +101,8 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     cachedParsedResume = resumeRow.parsed_resume || null;
+    // Editor schema format (skills is array) means cache was corrupted by old save logic; force re-parse
+    if (Array.isArray(cachedParsedResume?.skills)) cachedParsedResume = null;
   }
 
   // Pre-flight + JD sanitize — skip preflight if resume already validated (cached parse exists)
