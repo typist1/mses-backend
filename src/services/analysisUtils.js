@@ -5,8 +5,8 @@ const RATE_LIMIT = 20;
 export function buildScoreBreakdown(skillsArray) {
   const required = skillsArray.filter((s) => s.importance === 0);
   const recommended = skillsArray.filter((s) => s.importance === 1);
-  const strongRequired = required.filter((s) => s.fit_score >= 4).length;
-  const weakRecommended = recommended.filter((s) => s.fit_score < 4).length;
+  const strongRequired = required.filter((s) => s.fit_score >= 3).length;
+  const weakRecommended = recommended.filter((s) => s.fit_score <= 2).length;
   return `Strong on ${strongRequired}/${required.length} required skills, needs work on ${weakRecommended}/${recommended.length} recommended skills`;
 }
 
