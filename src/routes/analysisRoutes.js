@@ -272,4 +272,39 @@ router.get('/:id', authMiddleware, async (req, res) => {
   return res.json({ ...data, parsed_resume, score_breakdown });
 });
 
+// PATCH /analyze/:id — update saved_resume_id after user saves optimized resume
+router.patch('/:id', authMiddleware, async (req, res) => {
+  let userId;
+  try {
+    userId = await getSupabaseUserId(req.user.uid);
+  } catch {
+    return res.status(401).json({ error: 'User not found' });
+  }
+
+  const { saved_resume_id } = req.body;
+  if (!saved_resume_id) return res.status(400).json({ error: 'saved_resume_id required' });
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('analyses')
+    .select('id')
+    .eq('id', req.params.id)
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchError || !existing) return res.status(404).json({ error: 'Analysis not found' });
+
+  const { error: updateError } = await supabase
+    .from('analyses')
+    .update({ saved_resume_id })
+    .eq('id', req.params.id)
+    .eq('user_id', userId);
+
+  if (updateError) {
+    console.error('Error updating saved_resume_id:', updateError);
+    return res.status(500).json({ error: 'Failed to update analysis' });
+  }
+
+  return res.json({ message: 'Analysis updated' });
+});
+
 export default router;

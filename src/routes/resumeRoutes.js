@@ -68,6 +68,16 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    const { data: dupCheck } = await supabase
+      .from('resumes')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('file_name', file.originalname)
+      .maybeSingle();
+    if (dupCheck) {
+      return res.status(409).json({ error: `A resume named "${file.originalname}" already exists. Rename your file before uploading.` });
+    }
+
     const timestamp = Date.now();
     const fileName = `${timestamp}-${file.originalname}`;
     const filePath = `${userId}/${fileName}`;
@@ -273,6 +283,19 @@ router.patch('/:id', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'No fields to update' });
     }
 
+    if (updates.file_name) {
+      const { data: dupCheck } = await supabase
+        .from('resumes')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('file_name', updates.file_name)
+        .neq('id', resumeId)
+        .maybeSingle();
+      if (dupCheck) {
+        return res.status(409).json({ error: `A resume named "${updates.file_name}" already exists.` });
+      }
+    }
+
     const { error: updateError } = await supabase
       .from('resumes')
       .update(updates)
@@ -311,6 +334,17 @@ router.put('/:id/file', authMiddleware, upload.single('file'), async (req, res) 
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
+    const { data: dupCheck } = await supabase
+      .from('resumes')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('file_name', file.originalname)
+      .neq('id', resumeId)
+      .maybeSingle();
+    if (dupCheck) {
+      return res.status(409).json({ error: `A resume named "${file.originalname}" already exists. Rename your file before uploading.` });
+    }
+
     const timestamp = Date.now();
     const fileName = `${timestamp}-${file.originalname}`;
     const filePath = `${userId}/${fileName}`;
@@ -328,7 +362,7 @@ router.put('/:id/file', authMiddleware, upload.single('file'), async (req, res) 
 
     const updates = { file_name: file.originalname, file_path: filePath, file_size: file.size };
     if (req.body.parsed_resume) {
-      try { updates.parsed_resume = JSON.parse(req.body.parsed_resume); } catch (_) {}
+      try { updates.parsed_resume = JSON.parse(req.body.parsed_resume); } catch (e) { console.error('Failed to parse parsed_resume field:', e.message); }
     }
 
     const { data: updated, error: dbError } = await supabase
