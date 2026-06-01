@@ -23,7 +23,6 @@ const pdfController = {
             const result = await scrapeJobPage(url);
 
             if (!result.success) {
-                //console.log("return failed")
                 return res.status(500).json({
                     error: "Could not scrape job description",
                 });

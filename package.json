@@ -4,9 +4,12 @@
   "description": "",
   "main": "index.js",
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
-    "start": "nodemon src/server.js",
-    "dev": "node src/server.js",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
     "lint": "eslint .",
     "format": "npx prettier --write .",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -23,17 +26,12 @@
     "express": "^5.2.1",
     "firebase": "^12.10.0",
     "firebase-admin": "^13.6.0",
-    "fs": "^0.0.1-security",
-    "ini": "^5.0.0",
     "libreoffice-convert": "^1.8.1",
     "mammoth": "^1.12.0",
     "multer": "^2.1.1",
-    "mysql2": "^3.12.0",
-    "nodemon": "^3.1.14",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^5.6.205",
-    "pg": "^8.13.0",
     "playwright": "^1.59.1",
     "unpdf": "^1.4.0"
   },
@@ -42,6 +40,7 @@
     "@trivago/prettier-plugin-sort-imports": "6.0.1",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
+    "nodemon": "^3.1.14",
     "prettier": "3.7.4"
   }
 }

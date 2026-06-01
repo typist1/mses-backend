@@ -45,7 +45,6 @@ async function callLLM(messages, maxTokens) {
       .replace(/\s*```$/, '')
       .trim();
 
-    console.log("RAW LLM OUTPUT:", lastRaw);
     try {
       return JSON.parse(stripped);
     } catch {

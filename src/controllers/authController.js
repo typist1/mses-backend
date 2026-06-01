@@ -112,7 +112,6 @@ const authController = {
   async handleToken(req, res) {
     try {
       const { idToken } = req.body;
-      //console.log("Body:", req.body);
 
       if (!idToken) {
         return res.status(400).json({ error: 'No ID token provided' });
@@ -151,7 +150,7 @@ const authController = {
           .status(400)
           .json({ error: 'Username already exists, please choose another' });
       }
-      res.status(500).json({ error: 'Internal server error', detail: error.message, code: error.code });
+      res.status(500).json({ error: 'Internal server error' });
     }
   },
 };
