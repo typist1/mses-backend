@@ -18,7 +18,7 @@ try {
     credential: admin.credential.cert(serviceAccount),
   });
 
-  console.log('Firebase Admin SDK initialized successfully');
+  if (process.env.NODE_ENV !== 'production') console.log('Firebase Admin SDK initialized successfully');
 } catch (error) {
   console.error('Error initializing Firebase Admin SDK:', error.message);
   throw error;

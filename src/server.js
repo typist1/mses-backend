@@ -2,6 +2,8 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 import authRoutes from './routes/authRoutes.js';
 import pdfRoutes from './routes/pdfRoutes.js';
@@ -19,7 +21,7 @@ const corsOptions = {
       process.env.FRONTEND_URL_DEV,
     ].filter(Boolean);
 
-    if (allowedOrigins.includes(origin) || !origin) {
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -31,7 +33,15 @@ const corsOptions = {
   maxAge: 86400,
 };
 
+app.use(helmet());
 app.use(cors(corsOptions));
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.use(express.json());
 
@@ -44,7 +54,7 @@ app.use((req, res, next) => {
 
 
 app.use('/file', pdfRoutes);
-app.use('/auth', express.json(), authRoutes);
+app.use('/auth', authLimiter, express.json(), authRoutes);
 app.use('/resumes', resumeRoutes);
 app.use('/analyze', analysisRoutes);
 app.get('/health', (req, res) => {

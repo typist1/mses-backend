@@ -9,6 +9,16 @@ const libreConvert = promisify(libre.convert);
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+const PRIVATE_IP = /^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/i;
+
+function validateJobUrl(raw) {
+    let parsed;
+    try { parsed = new URL(raw); } catch { return false; }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    if (PRIVATE_IP.test(parsed.hostname)) return false;
+    return true;
+}
+
 const pdfController = {
     upload,
 
@@ -18,6 +28,10 @@ const pdfController = {
 
             if (!url) {
                 return res.status(400).json({ error: "No URL provided" });
+            }
+
+            if (!validateJobUrl(url)) {
+                return res.status(400).json({ error: "Invalid URL" });
             }
 
             const result = await scrapeJobPage(url);
@@ -63,7 +77,7 @@ const pdfController = {
             res.json({ text: extractedText });
         } catch (err) {
             console.error("Error extracting text:", err.message);
-            res.status(500).json({ error: "Failed to extract text", details: err.message });
+            res.status(500).json({ error: "Failed to extract text" });
         }
     },
 
@@ -78,7 +92,7 @@ const pdfController = {
             res.send(pdfBuffer);
         } catch (err) {
             console.error("PDF conversion error:", err.message);
-            res.status(500).json({ error: "Failed to convert to PDF", details: err.message });
+            res.status(500).json({ error: "Failed to convert to PDF" });
         }
     },
 };

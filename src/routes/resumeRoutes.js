@@ -177,6 +177,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
     if (storageError) {
       console.error('Error deleting from storage:', storageError);
+      return res.status(500).json({ error: 'Failed to delete resume file' });
     }
 
     const { error: dbError } = await supabase
@@ -193,7 +194,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     res.json({ message: 'Resume deleted successfully' });
   } catch (error) {
     console.error('Error in DELETE /resumes/:id:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
