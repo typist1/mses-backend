@@ -44,6 +44,7 @@ router.get('/', authMiddleware, async (req, res) => {
       .from('resumes')
       .select('*')
       .eq('user_id', userId)
+      .order('sort_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -116,6 +117,40 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
   } catch (error) {
     console.error('Error in POST /resumes/upload:', error);
     res.status(500).json({ error: error.message || 'Internal server error', detail: error.message });
+  }
+});
+
+// PUT /resumes/reorder - update sort_order for a list of root resumes
+router.put('/reorder', authMiddleware, async (req, res) => {
+  try {
+    const userId = await getSupabaseUserId(req.user.uid);
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'items array required' });
+    }
+
+    const ids = items.map((i) => i.id);
+    const { data: owned } = await supabase
+      .from('resumes')
+      .select('id')
+      .eq('user_id', userId)
+      .in('id', ids);
+
+    const ownedSet = new Set((owned || []).map((r) => r.id));
+
+    for (const item of items) {
+      if (!ownedSet.has(item.id)) continue;
+      await supabase
+        .from('resumes')
+        .update({ sort_order: item.sort_order })
+        .eq('id', item.id);
+    }
+
+    res.json({ message: 'Order updated' });
+  } catch (error) {
+    console.error('Error in PUT /resumes/reorder:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 
