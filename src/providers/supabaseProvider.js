@@ -31,13 +31,4 @@ export default {
     if (error) return null;
     return { ...data, firebaseUid: data.firebase_uid };
   },
-
-  async getAll() {
-    const { data, error } = await supabase
-      .from('users')
-      .select('username, email, firstname, lastname')
-      .order('username', { ascending: true });
-    if (error) throw error;
-    return data;
-  },
 };

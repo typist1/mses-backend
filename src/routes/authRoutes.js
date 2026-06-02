@@ -10,7 +10,6 @@ router.post('/login', authController.login);
 router.post('/logout', authController.logout);
 router.get('/me', authController.getMe);
 router.get('/profile', authController.getMe);
-router.get('/users', authMiddleware, authController.getAllUsers);
 router.post('/token', authController.handleToken);
 
 export default router;

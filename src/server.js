@@ -43,6 +43,13 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use(express.json());
 
 app.use(cookieParser());
@@ -53,9 +60,9 @@ app.use((req, res, next) => {
 });
 
 
-app.use('/file', pdfRoutes);
+app.use('/file', apiLimiter, pdfRoutes);
 app.use('/auth', authLimiter, express.json(), authRoutes);
-app.use('/resumes', resumeRoutes);
+app.use('/resumes', apiLimiter, resumeRoutes);
 app.use('/analyze', analysisRoutes);
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });

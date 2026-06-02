@@ -97,17 +97,6 @@ const authController = {
     }
   },
 
-  async getAllUsers(_req, res) {
-    try {
-      const users = await userRepository.getAll();
-
-      res.status(200).json(users);
-    } catch (error) {
-      console.error('Get all users error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
-
   // Called after Google OAuth (popup or redirect) to sync the Firebase user into the database.
   async handleToken(req, res) {
     try {
