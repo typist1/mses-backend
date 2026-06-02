@@ -4,6 +4,7 @@ import mammoth from 'mammoth';
 import { extractText as extractPDFText } from 'unpdf';
 import { supabase } from '../../supabase.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import { getSupabaseUserId } from '../services/userUtils.js';
 import { parseResume, truncateInputs } from '../services/llmService.js';
 
 const router = express.Router();
@@ -24,16 +25,6 @@ const upload = multer({
   },
 });
 
-// Look up the Supabase users.id from a Firebase UID
-async function getSupabaseUserId(firebaseUid) {
-  const { data, error } = await supabase
-    .from('users')
-    .select('id')
-    .eq('firebase_uid', firebaseUid)
-    .single();
-  if (error || !data) throw new Error('User not found in database');
-  return data.id;
-}
 
 // GET /resumes - list all resumes for the authenticated user
 router.get('/', authMiddleware, async (req, res) => {

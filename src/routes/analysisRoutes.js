@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase } from '../../supabase.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import { getSupabaseUserId } from '../services/userUtils.js';
 import {
   truncateInputs,
   preflightResume,
@@ -18,15 +19,6 @@ import {
 
 const router = express.Router();
 
-async function getSupabaseUserId(firebaseUid) {
-  const { data, error } = await supabase
-    .from('users')
-    .select('id')
-    .eq('firebase_uid', firebaseUid)
-    .single();
-  if (error || !data) throw new Error('User not found in database');
-  return data.id;
-}
 
 function isNonEnglish(text) {
   const nonAscii = (text.match(/[^\x00-\x7F]/g) || []).length;

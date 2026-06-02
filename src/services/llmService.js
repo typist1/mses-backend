@@ -411,6 +411,7 @@ Rewriting rules:
 - Do not reuse the same verb more than once per role — vary with precise synonyms
 - 12–25 words per bullet, max 2 sentences
 - All bullets must start with a past-tense action verb
+- Do not remove any existing statistic(s), reincorporate it into your rewrite as appropriate
 
 SUMMARY
 Add one suggestion if the summary is vague, uses filler adjectives ("innovative", "passionate", "hard-working"), or fails to state the candidate's role and domain clearly.
@@ -435,6 +436,7 @@ HARD RULES:
 - bullet_index: 0-based index of the bullet within its entry's bullets array (null for summary and skills)
 - field: "summary" for summary; "Company — Title" for experience; project name for projects; skill category for skills
 - reason: 10–15 words explaining what was strengthened or added
+- Do not remove any existing statistic(s) in the description
 
 ---
 

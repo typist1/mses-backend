@@ -1,4 +1,3 @@
-// scrapeJob.js
 import { chromium } from "playwright";
 
 export const scrapeJobPage = async (url) => {
@@ -18,16 +17,13 @@ export const scrapeJobPage = async (url) => {
 
     const page = await context.newPage();
 
-    // 🔥 better navigation strategy
     await page.goto(url, {
       waitUntil: "domcontentloaded", // more reliable than networkidle
       timeout: 30000,
     });
 
-    // 🔥 wait for content to load
     await page.waitForTimeout(3000);
 
-    // 🔥 try to extract structured job description
     const jobText = await page.evaluate(() => {
       const selectors = [
         '[class*="description"]',
